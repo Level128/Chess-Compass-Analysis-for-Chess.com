@@ -6,6 +6,9 @@
 // @version     1.0
 // @author      AndyVuj24
 // @description Adds a button on next to the chess board to analyze the current game using the move list on the panel to the right
+// @downloadURL https://raw.githubusercontent.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/main/chesscom_cc-plugin.js
+// @supportURL  https://github.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/issues
+// @homepageURL https://github.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com
 // ==/UserScript==
 
 var counter = 0;
