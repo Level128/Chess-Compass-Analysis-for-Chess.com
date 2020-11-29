@@ -44,12 +44,27 @@ async function setupButton(id) {
   console.log("TEST!");
   if (/PGN/.test(id)) {
     btn.addEventListener("click", function () {
-      const data = document
-        .querySelector(".board")
-        .game.getPGN()
-        .replace(/\[[^\]]*\]|\{[^\}]*\}/g, "");
-      // .replace(/\{[^\}]*\}|\[.+?\]|[\r\n]+|\d+\.\.+|\s\s+/g, "")
-      // .replace(/\s\s+/g, " ");
+      let selector = document.querySelector("chess-board");
+      let data;
+      if (selector !== null) {
+        data = selector.game.getPGN().replace(/\[[^\]]*\]|\{[^\}]*\}/g, "");
+        // .replace(/\{[^\}]*\}|\[.+?\]|[\r\n]+|\d+\.\.+|\s\s+/g, "")
+        // .replace(/\s\s+/g, " ");
+      } else {
+        selector = document.querySelectorAll(
+          "div.vertical-move-list-component span.vertical-move-list-column:not(.move-timestamps-component)"
+        );
+        if (!selector.length) {
+          console.log("Unable to find data for PGN");
+          return;
+        }
+        data = [...selector]
+          .map((e) => {
+            return e.innerText;
+          })
+          .join(" ");
+      }
+
       console.log("PGN: " + data);
       fetch("https://www.chesscompass.com/api/get_game_id", {
         method: "post",
@@ -70,7 +85,18 @@ async function setupButton(id) {
   }
   if (/FEN/.test(id)) {
     btn.addEventListener("click", function () {
-      const data = document.querySelector(".board").game.getFEN();
+      let data;
+      let selector = document.querySelector("chess-board");
+      if (selector !== null) {
+        data = selector.game.getFEN();
+      } else {
+        selector = document.querySelector("div.v-board");
+        if (selector === null) {
+          console.log("Unable to find data for FEN");
+          return;
+        }
+        data = selector.getChessboardInstance().state.selectedNode.fen;
+      }
       console.log("FEN: " + data);
       fetch("https://www.chesscompass.com/api/get_game_id", {
         method: "post",
