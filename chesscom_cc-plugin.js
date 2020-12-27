@@ -3,146 +3,159 @@
 // @match       https://www.chess.com/*
 // @run-at      document-end
 // @grant       none
-// @version     1.1
+// @version     1.2
 // @author      AndyVuj24
-// @description Adds a button on next to the chess board to analyze the current game using the move list on the panel to the right
+// @description This plugin adds buttons next to the chess board allowing for a quick post-game analysis of the current game on screen
 // @downloadURL https://raw.githubusercontent.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/main/chesscom_cc-plugin.js
+// @updateURL https://raw.githubusercontent.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/main/chesscom_cc-plugin.js
 // @supportURL  https://github.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/issues
 // @homepageURL https://github.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com
 // ==/UserScript==
 
 var counter = 0;
 
-async function addStyling() {
+const $ = document.querySelector.bind(document);
+const $$ = document.querySelectorAll.bind(document);
+
+const log = (message) => {
+  console.log(`[Chess.com Plugin Log]: ${message}`);
+};
+
+const addStyling = async () => {
   // button styling
+  log("Adding styling to page for plugin buttons");
   const styleElement = document.createElement("style");
-  styleElement.innerHTML = `.chess-compass-button-container{margin:auto;display:flex;align-items:center;justify-content:center;border-radius:3px;color:#fff;font-size:16px}.chess-compass-button-container>a{width:100%}.chess-compass-button{background-color:#489e5d;width:100%;margin:auto;height:40px;display:flex;align-items:center;justify-content:center;border-radius:3px 3px 0 0;color:#fff;cursor:pointer;font-size:16px;font-weight:500;}.chess-compass-button:hover{background-color:#57b26e}.chess-compass-data{display:none}`;
-  document.getElementsByTagName("head")[0].appendChild(styleElement);
-}
+  styleElement.innerHTML = `.gf-chess-compass-button-container{margin:auto;display:flex;align-items:center;justify-content:center;border-radius:3px;color:#fff;font-size:16px}.gf-chess-compass-button-container>a{width:100%}.gf-chess-compass-button{background-color:#489e5d;width:100%;margin:auto;height:40px;display:flex;align-items:center;justify-content:center;border-radius:3px 3px 0 0;color:#fff;cursor:pointer;font-size:16px;font-weight:500;}.gf-chess-compass-button:hover{background-color:#57b26e}`;
+  $("head")?.appendChild(styleElement);
+};
 
-async function addButton(element) {
-  console.log(`element: ${element}`);
+const addButtons = async (element) => {
   // for button element
-  const divPGN = document.createElement("div");
-  divPGN.innerHTML =
-    '<div id="btnPGN" class="chess-compass-button-container"><button class="chess-compass-button">Analyze PGN with Chess Compass</button></div>';
-  const divFEN = document.createElement("div");
-  divFEN.innerHTML =
-    '<div id="btnFEN" class="chess-compass-button-container"><button class="chess-compass-button">Analyze FEN with Chess Compass</button></div>';
+  log("Adding buttons to sidebar");
+  $(element)?.insertAdjacentHTML(
+    "beforebegin",
+    '<div><div id="btnPGN" class="gf-chess-compass-button-container"><button class="gf-chess-compass-button">Analyze PGN with Chess Compass</button></div></div>'
+  );
+  $(element)?.insertAdjacentHTML(
+    "beforebegin",
+    '<div><div id="btnFEN" class="gf-chess-compass-button-container"><button class="gf-chess-compass-button">Analyze FEN with Chess Compass</button></div></div>'
+  );
+};
 
-  sibling = document.querySelector(element);
-  if (sibling !== null) {
-    sibling.parentNode.insertBefore(divFEN, sibling);
-    sibling.parentNode.insertBefore(divPGN, sibling);
-  } else {
-    return false;
-  }
-}
-
-async function setupButton(id) {
-  let btn = document.querySelector(id);
-  console.log("TEST!");
-  if (/PGN/.test(id)) {
+const setupButton = async (id) => {
+  log(`Configuring button -> ${id}`);
+  const btn = $(id);
+  if (id.indexOf("PGN") !== -1) {
     btn.addEventListener("click", function () {
-      let selector = document.querySelector("chess-board");
-      let data;
-      if (selector !== null) {
-        data = selector.game.getPGN().replace(/\[[^\]]*\]|\{[^\}]*\}/g, "");
-        // .replace(/\{[^\}]*\}|\[.+?\]|[\r\n]+|\d+\.\.+|\s\s+/g, "")
-        // .replace(/\s\s+/g, " ");
-      } else {
-        selector = document.querySelectorAll(
-          "div.vertical-move-list-component span.vertical-move-list-column:not(.move-timestamps-component)"
-        );
-        if (!selector.length) {
-          console.log("Unable to find data for PGN");
-          return;
-        }
-        data = [...selector]
-          .map((e) => {
-            return e.innerText;
-          })
-          .join(" ");
+      const data =
+        ($("chess-board")
+          ?.game.getPGN?.()
+          .replace(/\[[^\]]*\]|\{[^\}]*\}/g, "") ||
+          [
+            ...$$(
+              "div.vertical-move-list-component span.vertical-move-list-column:not(.move-timestamps-component)"
+            ),
+          ]
+            .map(({ innerText }) => innerText)
+            .join(" ")
+            .replace(/\[[^\]]*\]|\{[^\}]*\}/g, "")) ??
+        null;
+      if (!data) {
+        log("Unable to find data for PGN");
+        return;
       }
 
-      console.log("PGN: " + data);
+      log("PGN: " + data);
       fetch("https://www.chesscompass.com/api/get_game_id", {
         method: "post",
         body: JSON.stringify({
           gameData: data,
         }),
       })
-        .then(function (p) {
-          return p.json();
+        .then((response) => {
+          return response.json();
         })
-        .then((data) =>
+        .then(({ gameId }) => {
           window.open(
-            "https://www.chesscompass.com/analyze/" + data.gameId,
+            "https://www.chesscompass.com/analyze/" + gameId,
             "_blank"
-          )
-        );
+          );
+        });
     });
   }
-  if (/FEN/.test(id)) {
+
+  if (id.indexOf("FEN") !== -1) {
     btn.addEventListener("click", function () {
-      let data;
-      let selector = document.querySelector("chess-board");
-      if (selector !== null) {
-        data = selector.game.getFEN();
-      } else {
-        selector = document.querySelector("div.v-board");
-        if (selector === null) {
-          console.log("Unable to find data for FEN");
-          return;
-        }
-        data = selector.getChessboardInstance().state.selectedNode.fen;
+      const data =
+        ($("chess-board")?.game.getFEN?.() ||
+          $("div.v-board")?.getChessboardInstance?.().state.selectedNode.fen) ??
+        null;
+      if (!data) {
+        log("Unable to find data for FEN");
+        return;
       }
-      console.log("FEN: " + data);
+      log("FEN: " + data);
       fetch("https://www.chesscompass.com/api/get_game_id", {
         method: "post",
         body: JSON.stringify({
           gameData: data,
         }),
       })
-        .then(function (p) {
-          return p.json();
+        .then((response) => {
+          return response.json();
         })
-        .then((data) =>
+        .then(({ gameId }) => {
           window.open(
-            "https://www.chesscompass.com/analyze/" + data.gameId,
+            "https://www.chesscompass.com/analyze/" + gameId,
             "_blank"
-          )
-        );
+          );
+        });
     });
   }
-}
+};
 
-async function waitForContainer() {
+const waitForContainer = async () => {
   const existCondition = setInterval(function () {
     [
       ".sidebar-component",
       ".sidebar-v5-component",
       "vertical-move-list",
     ].forEach((element) => {
-      if (document.querySelectorAll(element).length) {
+      if ($(element)) {
         clearInterval(existCondition);
         main(element);
         return;
       }
       if (counter > 600) {
-        console.log("No sidebars found...");
+        log("No sidebars found for us to use...");
         clearInterval(existCondition);
       }
     });
     counter++;
   }, 100); // check every 100ms
-}
+};
+
+const clearAds = async () => {
+  log("Clearing ads...");
+  const adsToRemove = [
+    "#tall-sidebar-ad",
+    "#adblocker-check",
+    "#board-layout-ad",
+  ];
+  adsToRemove.forEach((selector) => {
+    $$(selector).forEach((ele) => {
+      ele.remove();
+    });
+  });
+  log("Ads cleared!");
+};
 
 async function main(element) {
   await addStyling();
-  await addButton(element);
+  await addButtons(element);
   await setupButton("#btnPGN");
   await setupButton("#btnFEN");
+  await clearAds();
 }
 
 if (
