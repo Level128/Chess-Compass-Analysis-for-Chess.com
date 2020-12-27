@@ -7,7 +7,7 @@
 // @author      AndyVuj24
 // @description This plugin adds buttons next to the chess board allowing for a quick post-game analysis of the current game on screen
 // @downloadURL https://raw.githubusercontent.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/main/chesscom_cc-plugin.js
-// @updateURL https://raw.githubusercontent.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/main/chesscom_cc-plugin.js
+// @updateURL   https://raw.githubusercontent.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/main/chesscom_cc-plugin.js
 // @supportURL  https://github.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/issues
 // @homepageURL https://github.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com
 // ==/UserScript==
