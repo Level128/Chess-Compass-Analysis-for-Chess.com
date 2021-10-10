@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name        Chess Compass Analysis for Chess.com
+// @namespace      AndyVuj24
 // @match       https://www.chess.com/*
 // @run-at      document-end
 // @grant       none
-// @version     1.2
+// @version     1.3.0
 // @author      AndyVuj24
 // @description This plugin adds buttons next to the chess board allowing for a quick post-game analysis of the current game on screen
 // @downloadURL https://raw.githubusercontent.com/andyvuj24/Chess-Compass-Analysis-for-Chess.com/main/chesscom_cc-plugin.js
@@ -17,8 +18,28 @@ var counter = 0;
 const $ = document.querySelector.bind(document);
 const $$ = document.querySelectorAll.bind(document);
 
-const log = (message) => {
-  console.log(`[Chess.com Plugin Log]: ${message}`);
+const log = (message, ...data) => {
+  if (data.length > 0) {
+    return console.log(`[Chess.com Plugin Log]: ${message}`, data);
+  }
+  return console.log(`[Chess.com Plugin Log]: ${message}`);
+};
+
+const isElement = (element) => {
+  return element instanceof Element;
+};
+const isQueryString = (query) => {
+  return (
+    !isElement(query) && (typeof query == "string" || query instanceof String)
+  );
+};
+const getDOMElement = (request) => {
+  if (isElement(request)) {
+    return request;
+  } else if (isQueryString(request)) {
+    return $(request);
+  }
+  return null;
 };
 
 const addStyling = async () => {
@@ -26,17 +47,24 @@ const addStyling = async () => {
   log("Adding styling to page for plugin buttons");
   const styleElement = document.createElement("style");
   styleElement.innerHTML = `.gf-chess-compass-button-container{margin:auto;display:flex;align-items:center;justify-content:center;border-radius:3px;color:#fff;font-size:16px}.gf-chess-compass-button-container>a{width:100%}.gf-chess-compass-button{background-color:#489e5d;width:100%;margin:auto;height:40px;display:flex;align-items:center;justify-content:center;border-radius:3px 3px 0 0;color:#fff;cursor:pointer;font-size:16px;font-weight:500;}.gf-chess-compass-button:hover{background-color:#57b26e}`;
-  $("head")?.appendChild(styleElement);
+  document.head?.appendChild?.(styleElement);
 };
 
 const addButtons = async (element) => {
   // for button element
+  const target = getDOMElement(element);
+
+  if (target === null) {
+    log("Failed to add buttons to target: ", target);
+    return;
+  }
+
   log("Adding buttons to sidebar");
-  $(element)?.insertAdjacentHTML(
+  target?.insertAdjacentHTML(
     "beforebegin",
     '<div><div id="btnPGN" class="gf-chess-compass-button-container"><button class="gf-chess-compass-button">Analyze PGN with Chess Compass</button></div></div>'
   );
-  $(element)?.insertAdjacentHTML(
+  target?.insertAdjacentHTML(
     "beforebegin",
     '<div><div id="btnFEN" class="gf-chess-compass-button-container"><button class="gf-chess-compass-button">Analyze FEN with Chess Compass</button></div></div>'
   );
@@ -65,7 +93,7 @@ const setupButton = async (id) => {
         return;
       }
 
-      log("PGN: " + data);
+      log("PGN: ", data);
       fetch("https://www.chesscompass.com/api/get_game_id", {
         method: "post",
         body: JSON.stringify({
@@ -115,38 +143,81 @@ const setupButton = async (id) => {
 };
 
 const waitForContainer = async () => {
-  const existCondition = setInterval(function () {
-    [
-      ".sidebar-component",
-      ".sidebar-v5-component",
-      "vertical-move-list",
-    ].forEach((element) => {
-      if ($(element)) {
-        clearInterval(existCondition);
-        main(element);
+  const selectors = [
+    ".sidebar-component",
+    ".sidebar-v5-component",
+    "vertical-move-list",
+  ];
+  return new Promise((resolve, reject) => {
+    for (const selector of selectors) {
+      log("Initially trying: ", selector);
+      const element = $(selector);
+
+      if (element) {
+        log("Found container: ", element);
+        resolve(main(selector));
         return;
       }
-      if (counter > 600) {
-        log("No sidebars found for us to use...");
-        clearInterval(existCondition);
-      }
+    }
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        const nodes = Array.from(mutation.addedNodes);
+        for (const node of nodes) {
+          for (const selector of selectors) {
+            if (node.matches && node.matches(selector)) {
+              log("Observer found container: ", node);
+              observer.disconnect();
+              resolve(main(selector));
+              return;
+            }
+          }
+        }
+      });
     });
-    counter++;
-  }, 100); // check every 100ms
+
+    log("Made container observer");
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+    });
+  });
 };
 
 const clearAds = async () => {
   log("Clearing ads...");
+
   const adsToRemove = [
     "#tall-sidebar-ad",
     "#adblocker-check",
     "#board-layout-ad",
   ];
+
   adsToRemove.forEach((selector) => {
-    $$(selector).forEach((ele) => {
-      ele.remove();
+    $$(selector).forEach((el) => {
+      el.remove();
+      log("Removed Ad: ", el);
     });
   });
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      const nodes = Array.from(mutation.addedNodes);
+      for (const node of nodes) {
+        for (const selector of adsToRemove) {
+          if (node.matches && node.matches(selector)) {
+            node.remove();
+          }
+        }
+      }
+    });
+  });
+
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+
   log("Ads cleared!");
 };
 
@@ -158,10 +229,7 @@ async function main(element) {
   await clearAds();
 }
 
-if (
-  document.readyState === "complete" ||
-  (document.readyState !== "loading" && !document.documentElement.doScroll)
-) {
+if (["complete", "interactive"].indexOf(document.readyState) > -1) {
   waitForContainer();
 } else {
   document.addEventListener("DOMContentLoaded", waitForContainer);
